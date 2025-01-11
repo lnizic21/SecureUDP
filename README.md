@@ -1,6 +1,6 @@
 ### **Opis koda**
 
-#### **1. Server (`salje.py`)**
+#### **1. Server (`server.py`)**
 Ovaj dio programa predstavlja UDP server koji prima podatke od klijenta uz implementaciju mehanizama za pouzdano primanje koristeći Forward Error Correction (FEC). 
 
 - **Glavne komponente:**
@@ -16,7 +16,7 @@ Ovaj dio programa predstavlja UDP server koji prima podatke od klijenta uz imple
 
 ---
 
-#### **2. Klijent (`pr.py`)**
+#### **2. Klijent (`sender.py`)**
 Ovaj dio programa šalje podatke serveru koristeći UDP protokol s implementacijom pouzdanog prijenosa koristeći prozore i FEC.
 
 - **Glavne komponente:**
@@ -55,7 +55,7 @@ Ovaj dio programa šalje podatke serveru koristeći UDP protokol s implementacij
    ```
 2. Pokrenite klijent:
    ```bash
-   python client.py
+   python sender.py
    ```
 3. Server će prikazivati dolazne pakete, rekonstruirati izgubljene pakete ako je moguće, i završiti rad nakon što primi `END`.
 
