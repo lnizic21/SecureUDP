@@ -1,57 +1,64 @@
-# SecureUDP
+### **Opis koda**
 
-SecureUDP is a Python project that implements reliable data transmission over UDP using Forward Error Correction (FEC). It ensures data integrity and reliability by generating FEC packets and reconstructing lost packets.
+#### **1. Server (`salje.py`)**
+Ovaj dio programa predstavlja UDP server koji prima podatke od klijenta uz implementaciju mehanizama za pouzdano primanje koristeći Forward Error Correction (FEC). 
 
-## Configuration
+- **Glavne komponente:**
+  - `reliable_receive_with_fec`: Funkcija za primanje podataka.
+    - **FEC podrška:** Ako se paket izgubi, FEC omogućuje rekonstrukciju izgubljenog paketa.
+    - **ACK:** Server šalje potvrdu (ACK) za ispravno primljene pakete.
+    - **END signal:** Kada primi paket s oznakom "END", server završava rad.
+  - `reconstruct_packet`: Pomoćna funkcija za rekonstrukciju izgubljenog paketa koristeći XOR svih paketa u grupi.
+  - **Radni tok**:
+    - Prima pakete i provjerava redoslijed.
+    - Provjerava je li potrebno rekonstruirati paket pomoću FEC-a.
+    - Po završetku vraća sve primljene podatke spojene u cjelinu.
 
-The configuration parameters are defined at the beginning of the `secureUDP.py` file:
+---
 
-- `SERVER_IP`: IP address of the server.
-- `SERVER_PORT`: Port number of the server.
-- `CLIENT_PORT`: Port number of the client.
-- `PACKET_SIZE`: Size of each packet in bytes.
-- `TIMEOUT`: Timeout duration for waiting for acknowledgments.
-- `WINDOW_SIZE`: Size of the sliding window for packet transmission.
-- `FEC_GROUP_SIZE`: Number of packets in a group for applying FEC.
+#### **2. Klijent (`pr.py`)**
+Ovaj dio programa šalje podatke serveru koristeći UDP protokol s implementacijom pouzdanog prijenosa koristeći prozore i FEC.
 
-## Functions
+- **Glavne komponente:**
+  - `reliable_send_with_fec`: Funkcija za slanje podataka.
+    - **FEC generacija:** Generira FEC paket za svaku grupu paketa kako bi omogućila rekonstrukciju izgubljenih paketa na strani servera.
+    - **Prozor za slanje:** Koristi veličinu prozora (WINDOW_SIZE) kako bi ograničio broj paketa koji se šalju istovremeno.
+    - **Timeout:** Čeka potvrde (ACK) i ponovo šalje pakete koji nisu potvrđeni.
+    - **END signal:** Na kraju šalje poseban paket "END" kako bi obavijestio server o završetku.
+  - `generate_fec_packet`: Funkcija za generiranje FEC paketa koristeći XOR svih paketa u grupi.
+  - **Radni tok**:
+    - Dijeli podatke na manje pakete (ako je potrebno) i šalje ih serveru.
+    - Provjerava odgovore servera i ponovno šalje nepotvrđene pakete.
+    - Na kraju šalje signal za završetak.
 
-### `generate_fec_packet(packets)`
+---
 
-Generates an FEC packet by performing XOR on all packets in the group.
+### **Kako funkcioniraju FEC i ACK mehanizmi**
+1. **FEC (Forward Error Correction)**:
+   - Grupira određeni broj paketa (FEC_GROUP_SIZE).
+   - Generira FEC paket kao XOR svih paketa u grupi.
+   - Ako jedan paket u grupi nedostaje, server koristi FEC paket za rekonstrukciju.
 
-### `reconstruct_packet(fec_packet, packets)`
+2. **ACK (Acknowledgment)**:
+   - Server šalje ACK za svaki uspješno primljeni paket.
+   - Klijent ponovno šalje pakete za koje nije primio ACK.
 
-Reconstructs a lost packet using the FEC packet and the received packets.
+3. **END signal**:
+   - Klijent šalje poseban paket `END`, koji server prepoznaje kao signal za završetak.
 
-### `reliable_send_with_fec(data, dest_ip, dest_port)`
+---
 
-Sends data reliably using FEC. It splits the data into packets, generates FEC packets, and sends them to the destination. It also handles acknowledgments and retransmissions.
+### **Kako koristiti kod**
+1. Pokrenite server:
+   ```bash
+   python server.py
+   ```
+2. Pokrenite klijent:
+   ```bash
+   python client.py
+   ```
+3. Server će prikazivati dolazne pakete, rekonstruirati izgubljene pakete ako je moguće, i završiti rad nakon što primi `END`.
 
-### `reliable_receive_with_fec(listen_ip, listen_port)`
-
-Receives data reliably using FEC. It listens for incoming packets, handles FEC packets, and reconstructs lost packets. It also sends acknowledgments for received packets.
-
-## Usage
-
-To test the SecureUDP implementation, run the `main` function. It starts the server and client in separate threads and sends a sample message from the client to the server.
-
-```python
-if __name__ == "__main__":
-    main()
-```
-
-## Example
-
-1. Configure the parameters in `secureUDP.py` as needed.
-2. Run the script:
-
-```sh
-python secureUDP.py
-```
-
-3. The server will start and wait for incoming data. The client will send a sample message to the server.
-4. The server will receive the data, including any reconstructed packets, and print the received message.
 
 ## License
 
