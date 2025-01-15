@@ -1,4 +1,3 @@
-### Server (salje.py)
 import socket
 
 # Konfiguracija
@@ -25,6 +24,8 @@ def reliable_receive_with_fec(listen_ip, listen_port):
 
     while True:
         data, addr = sock.recvfrom(2048)
+        print(f"Primljen paket od {addr}: {data[:50]}...")  # Ispis samo početnog dijela paketa
+
         if data.startswith(b"FEC|"):
             _, base_seq, fec_packet = data.split(b"|", 2)
             base_seq = int(base_seq)
@@ -68,7 +69,12 @@ def reliable_receive_with_fec(listen_ip, listen_port):
 def main():
     print("Pokreće se server...")
     received = reliable_receive_with_fec(SERVER_IP, SERVER_PORT)
-    print("Primljeni podaci:", received.decode())
+    
+    # Spremanje primljenih podataka u datoteku
+    with open("received_file.jpg", "wb") as f:
+        f.write(received)
+    
+    print("Primljeni podaci su pohranjeni kao 'received_file.jpg'.")
 
 if __name__ == "__main__":
     main()

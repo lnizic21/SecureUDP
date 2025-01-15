@@ -1,6 +1,6 @@
-### Klijent (pr.py)
 import socket
 import time
+import random
 
 # Konfiguracija
 SERVER_IP = "127.0.0.1"
@@ -12,10 +12,29 @@ FEC_GROUP_SIZE = 4  # Broj paketa na koje primjenjujemo FEC
 
 # Funkcija za generiranje FEC paketa (XOR svih paketa u grupi)
 def generate_fec_packet(packets):
-    fec_packet = packets[0]
-    for packet in packets[1:]:
+    # Filtriraj None pakete (ako su neki paketi izgubljeni)
+    valid_packets = [packet for packet in packets if packet is not None]
+    
+    # Ako nema valjanih paketa, ne možemo generirati FEC
+    if not valid_packets:
+        return None
+    
+    # Inicijaliziraj FEC paket s prvim validnim paketom
+    fec_packet = valid_packets[0]
+    for packet in valid_packets[1:]:
         fec_packet = bytes(a ^ b for a, b in zip(fec_packet, packet))
     return fec_packet
+
+# Simulacija gubitka paketa i oštećenja
+def simulate_packet_loss_and_corruption(packets, loss_probability=0.1, corruption_probability=0.1):
+    for i in range(len(packets)):
+        if random.random() < loss_probability:
+            print(f"Simuliran gubitak paketa {i}")
+            packets[i] = None  # Paket se "gubi"
+        elif random.random() < corruption_probability:
+            print(f"Simulirano oštećenje paketa {i}")
+            packets[i] = bytes([random.randint(0, 255) for _ in range(PACKET_SIZE)])  # Paket se "oštećuje"
+    return packets
 
 # Pouzdano slanje s FEC-om
 def reliable_send_with_fec(data, dest_ip, dest_port):
@@ -31,14 +50,17 @@ def reliable_send_with_fec(data, dest_ip, dest_port):
         # Slanje paketa i FEC-a unutar prozora
         for i in range(base, min(base + WINDOW_SIZE, len(packets)), FEC_GROUP_SIZE):
             group = packets[i:i + FEC_GROUP_SIZE]
+            group = simulate_packet_loss_and_corruption(group)  # Simulacija gubitka i oštećenja paketa
             fec_packet = generate_fec_packet(group)
+            if fec_packet is not None:
+                sock.sendto(f"FEC|{i}|".encode() + fec_packet, (dest_ip, dest_port))
+                print(f"Poslan FEC za grupu {i}-{i + FEC_GROUP_SIZE - 1}")
+            
             for j, packet in enumerate(group):
-                if not acks[i + j]:
+                if packet is not None and not acks[i + j]:
                     numbered_packet = f"{i + j}|".encode() + packet
                     sock.sendto(numbered_packet, (dest_ip, dest_port))
                     print(f"Poslan paket {i + j}")
-            sock.sendto(f"FEC|{i}|".encode() + fec_packet, (dest_ip, dest_port))
-            print(f"Poslan FEC za grupu {i}-{i + FEC_GROUP_SIZE - 1}")
 
         # Čekanje potvrda
         start_time = time.time()
@@ -53,6 +75,7 @@ def reliable_send_with_fec(data, dest_ip, dest_port):
                 while base < len(acks) and acks[base]:
                     base += 1
             except socket.timeout:
+                print("Timeout pri čekanju na ACK.")
                 break
 
     # Slanje signala za završetak
@@ -62,7 +85,11 @@ def reliable_send_with_fec(data, dest_ip, dest_port):
 
 def main():
     print("Pokreće se klijent...")
-    data = "Ovo su podaci koji se šalju preko UDP-a. END".encode("utf-8")
+    
+    # Učitaj datoteku koju želiš poslati
+    with open("file_to_send.jpg", "rb") as f:
+        data = f.read()
+    
     reliable_send_with_fec(data, SERVER_IP, SERVER_PORT)
 
 if __name__ == "__main__":
